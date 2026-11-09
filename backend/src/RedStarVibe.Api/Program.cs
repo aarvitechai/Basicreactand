@@ -6,12 +6,12 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
     .AddApplication()
-    .AddInfrastructure()
+    .AddInfrastructure(builder.Configuration, builder.Environment)
     .AddApiServices(builder.Configuration);
 
 var app = builder.Build();
 
-app.UseApiPipeline();
+await app.UseApiPipelineAsync();
 
 await app.RunAsync();
 

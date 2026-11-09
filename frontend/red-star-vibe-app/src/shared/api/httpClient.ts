@@ -21,6 +21,21 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Field-level validation errors from a problem-details response, keyed by camelCase field name
+ * (the backend may send "Email" or "email"). Errors not tied to a field are under "".
+ */
+export function getFieldErrors(error: unknown): Record<string, string> {
+  if (!(error instanceof ApiError) || !error.problem?.errors) return {}
+  const result: Record<string, string> = {}
+  for (const [key, messages] of Object.entries(error.problem.errors)) {
+    const field = key.replace(/^\$\./, '')
+    const camel = field ? field.charAt(0).toLowerCase() + field.slice(1) : ''
+    result[camel] = messages.join(' ')
+  }
+  return result
+}
+
 type Query = Record<string, string | number | boolean | undefined>
 
 interface RequestOptions extends Omit<RequestInit, 'body'> {
@@ -41,6 +56,8 @@ function buildUrl(path: string, query?: Query): string {
 
 async function request<T>(path: string, { query, body, headers, ...init }: RequestOptions = {}): Promise<T> {
   const response = await fetch(buildUrl(path, query), {
+    // Send the httpOnly auth cookie. Same-origin by default; also works cross-origin when CORS allows credentials.
+    credentials: 'include',
     ...init,
     headers: {
       Accept: 'application/json',

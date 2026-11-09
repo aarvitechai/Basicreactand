@@ -19,6 +19,16 @@ internal sealed partial class GlobalExceptionHandler(
                 Status = StatusCodes.Status400BadRequest,
                 Title = validation.Message,
             },
+            ConflictException conflict => new ProblemDetails
+            {
+                Status = StatusCodes.Status409Conflict,
+                Title = conflict.Message,
+            },
+            UnauthorizedException unauthorized => new ProblemDetails
+            {
+                Status = StatusCodes.Status401Unauthorized,
+                Title = unauthorized.Message,
+            },
             OperationCanceledException => new ProblemDetails
             {
                 Status = StatusCodes.Status499ClientClosedRequest,

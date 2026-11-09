@@ -1,0 +1,89 @@
+import { useState, type FormEvent } from 'react'
+import { Link } from 'react-router'
+import { ApiError } from '@/shared/api/httpClient'
+import { FormField } from '@/shared/components/FormField'
+import { useLogin } from '../hooks/useAuth'
+import type { User } from '../types'
+import { validateLogin, type FormErrors, type LoginFormValues } from '../validation'
+
+interface LoginFormProps {
+  onSuccess: (user: User) => void
+}
+
+export function LoginForm({ onSuccess }: LoginFormProps) {
+  const [values, setValues] = useState<LoginFormValues>({ email: '', password: '', rememberMe: false })
+  const [errors, setErrors] = useState<FormErrors<LoginFormValues>>({})
+  const [formError, setFormError] = useState<string | null>(null)
+  const login = useLogin()
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault()
+    setFormError(null)
+
+    const clientErrors = validateLogin(values)
+    setErrors(clientErrors)
+    if (Object.keys(clientErrors).length > 0) return
+
+    login.mutate(
+      { ...values, email: values.email.trim() },
+      {
+        onSuccess,
+        onError: (error) => {
+          if (error instanceof ApiError && error.status === 429) {
+            setFormError('Too many attempts. Please wait a minute and try again.')
+          } else {
+            setFormError(error instanceof ApiError ? error.message : 'Sign-in failed. Please try again.')
+          }
+        },
+      },
+    )
+  }
+
+  return (
+    <form className="form" onSubmit={handleSubmit} noValidate>
+      {formError && (
+        <div className="error" role="alert">
+          <p>{formError}</p>
+        </div>
+      )}
+
+      <FormField
+        label="Email"
+        name="email"
+        type="email"
+        autoComplete="email"
+        value={values.email}
+        onChange={(e) => setValues((v) => ({ ...v, email: e.target.value }))}
+        error={errors.email}
+        required
+      />
+      <FormField
+        label="Password"
+        name="password"
+        type="password"
+        autoComplete="current-password"
+        value={values.password}
+        onChange={(e) => setValues((v) => ({ ...v, password: e.target.value }))}
+        error={errors.password}
+        required
+      />
+
+      <label className="checkbox">
+        <input
+          type="checkbox"
+          checked={values.rememberMe}
+          onChange={(e) => setValues((v) => ({ ...v, rememberMe: e.target.checked }))}
+        />
+        Keep me signed in
+      </label>
+
+      <button type="submit" className="primary" disabled={login.isPending}>
+        {login.isPending ? 'Signing in…' : 'Sign in'}
+      </button>
+
+      <p className="muted form-footer">
+        New here? <Link to="/register">Create an account</Link>
+      </p>
+    </form>
+  )
+}

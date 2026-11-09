@@ -1,10 +1,13 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using RedStarVibe.Api.Contracts;
+using RedStarVibe.Api.Extensions;
 using RedStarVibe.Application.Weather;
 
 namespace RedStarVibe.Api.Controllers.V1;
 
 [ApiController]
+[EnableRateLimiting(ServiceCollectionExtensions.DefaultRateLimitPolicy)]
 [Route("api/v1/weather-forecasts")]
 [Produces("application/json")]
 public sealed class WeatherForecastsController(IWeatherForecastService service) : ControllerBase

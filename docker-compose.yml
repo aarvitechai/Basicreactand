@@ -4,10 +4,12 @@ services:
       context: ./backend
     environment:
       ASPNETCORE_ENVIRONMENT: Production
+      # Containers can't use Windows auth: use a SQL login. Set DB_CONNECTION_STRING in .env (see .env.example).
+      ConnectionStrings__DefaultConnection: ${DB_CONNECTION_STRING:?Set DB_CONNECTION_STRING in .env}
     expose:
       - "8080"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health/live || exit 1"]
       interval: 30s
       timeout: 3s
       retries: 3

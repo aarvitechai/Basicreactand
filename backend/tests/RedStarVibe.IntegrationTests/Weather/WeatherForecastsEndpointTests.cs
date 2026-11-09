@@ -1,12 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
-using Microsoft.AspNetCore.Mvc.Testing;
 using RedStarVibe.Api.Contracts;
 
 namespace RedStarVibe.IntegrationTests.Weather;
 
-public sealed class WeatherForecastsEndpointTests(WebApplicationFactory<Program> factory)
-    : IClassFixture<WebApplicationFactory<Program>>
+public sealed class WeatherForecastsEndpointTests(ApiFactory factory)
+    : IClassFixture<ApiFactory>
 {
     private readonly HttpClient _client = factory.CreateClient();
 
