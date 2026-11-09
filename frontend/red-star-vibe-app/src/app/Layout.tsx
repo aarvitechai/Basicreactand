@@ -39,6 +39,9 @@ export function Layout() {
       <main className="app-main">
         <Outlet />
       </main>
+      <footer className="app-footer">
+        © {new Date().getFullYear()} {env.appName}. All rights reserved.
+      </footer>
     </div>
   )
 }

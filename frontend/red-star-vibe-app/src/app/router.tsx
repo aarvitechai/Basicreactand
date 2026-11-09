@@ -1,7 +1,7 @@
 import { createBrowserRouter } from 'react-router'
 import { GuestOnly, RequireAuth } from '@/features/auth'
 import { AccountPage } from '@/pages/AccountPage'
-import { HomePage } from '@/pages/HomePage'
+import { HomePage } from '@/pages/home/HomePage'
 import { LoginPage } from '@/pages/LoginPage'
 import { RegisterPage } from '@/pages/RegisterPage'
 import { Layout } from './Layout'
