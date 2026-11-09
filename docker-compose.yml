@@ -6,6 +6,13 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       # Containers can't use Windows auth: use a SQL login. Set DB_CONNECTION_STRING in .env (see .env.example).
       ConnectionStrings__DefaultConnection: ${DB_CONNECTION_STRING:?Set DB_CONNECTION_STRING in .env}
+      App__FrontendBaseUrl: ${FRONTEND_BASE_URL:-http://localhost:8080}
+      Email__FromAddress: ${EMAIL_FROM_ADDRESS:-no-reply@redstarvibe.local}
+      Email__Smtp__Host: ${SMTP_HOST:?Set SMTP_HOST in .env}
+      Email__Smtp__Port: ${SMTP_PORT:-587}
+      Email__Smtp__Username: ${SMTP_USERNAME:-}
+      Email__Smtp__Password: ${SMTP_PASSWORD:-}
+      Email__Smtp__UseStartTls: ${SMTP_USE_STARTTLS:-true}
     expose:
       - "8080"
     healthcheck:

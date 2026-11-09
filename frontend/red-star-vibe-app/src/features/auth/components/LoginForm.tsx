@@ -68,14 +68,19 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
         required
       />
 
-      <label className="checkbox">
-        <input
-          type="checkbox"
-          checked={values.rememberMe}
-          onChange={(e) => setValues((v) => ({ ...v, rememberMe: e.target.checked }))}
-        />
-        Keep me signed in
-      </label>
+      <div className="form-row">
+        <label className="checkbox">
+          <input
+            type="checkbox"
+            checked={values.rememberMe}
+            onChange={(e) => setValues((v) => ({ ...v, rememberMe: e.target.checked }))}
+          />
+          Keep me signed in
+        </label>
+        <Link to="/forgot-password" className="small-link">
+          Forgot password?
+        </Link>
+      </div>
 
       <button type="submit" className="primary" disabled={login.isPending}>
         {login.isPending ? 'Signing in…' : 'Sign in'}

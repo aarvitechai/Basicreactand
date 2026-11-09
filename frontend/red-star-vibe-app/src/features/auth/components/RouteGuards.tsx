@@ -7,6 +7,11 @@ export interface RedirectState {
   from?: string
 }
 
+/** Router state for showing a one-off success message on the sign-in page. */
+export interface LoginNoticeState {
+  notice?: string
+}
+
 /** Renders child routes only for signed-in users; otherwise redirects to /login and remembers where they were. */
 export function RequireAuth() {
   const { data: user, isPending, isError, error, refetch } = useCurrentUser()

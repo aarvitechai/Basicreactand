@@ -1,9 +1,13 @@
+using System.Text;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using RedStarVibe.Application.Abstractions;
 using RedStarVibe.Application.Auth;
 using RedStarVibe.Application.Common;
+using RedStarVibe.Infrastructure.Email;
 
 namespace RedStarVibe.Infrastructure.Identity;
 
@@ -11,11 +15,16 @@ internal sealed partial class IdentityAuthService(
     UserManager<ApplicationUser> userManager,
     SignInManager<ApplicationUser> signInManager,
     IDateTimeProvider clock,
+    IEmailOutbox emailOutbox,
+    IOptions<AppUrlOptions> appUrls,
+    IOptions<EmailOptions> emailOptions,
+    IOptions<DataProtectionTokenProviderOptions> tokenOptions,
     ILogger<IdentityAuthService> logger) : IAuthService
 {
     // Same message for unknown email, wrong password and lockout so responses don't reveal which accounts exist.
     private const string InvalidCredentials = "Invalid email or password.";
     private const string DuplicateEmail = "An account with this email already exists.";
+    private const string InvalidResetLink = "This reset link is invalid or has expired. Please request a new one.";
 
     public async Task<UserDto> RegisterAsync(RegisterUserCommand command, CancellationToken cancellationToken)
     {
@@ -83,6 +92,73 @@ internal sealed partial class IdentityAuthService(
         return user is null ? null : ToDto(user);
     }
 
+    public async Task RequestPasswordResetAsync(string email, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(email);
+
+        var user = await userManager.FindByEmailAsync(email.Trim());
+        if (user is null)
+        {
+            // Deliberately silent: the caller gets the same response whether or not the account exists.
+            return;
+        }
+
+        var token = await userManager.GeneratePasswordResetTokenAsync(user);
+        var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+
+        var baseUrl = appUrls.Value.FrontendBaseUrl.TrimEnd('/');
+        var query = $"email={Uri.EscapeDataString(user.Email!)}&token={Uri.EscapeDataString(encodedToken)}";
+        var resetLink = new Uri($"{baseUrl}/reset-password?{query}");
+
+        var message = EmailTemplates.PasswordReset(
+            user.Email!, user.DisplayName, resetLink, emailOptions.Value.FromName, tokenOptions.Value.TokenLifespan);
+
+        await emailOutbox.EnqueueAsync(message, cancellationToken);
+        LogPasswordResetRequested(logger, user.Id);
+    }
+
+    public async Task ResetPasswordAsync(ResetPasswordCommand command, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+
+        var user = await userManager.FindByEmailAsync(command.Email.Trim());
+        if (user is null || !TryDecodeToken(command.Token, out var token))
+        {
+            throw new ValidationException("token", InvalidResetLink);
+        }
+
+        var result = await userManager.ResetPasswordAsync(user, token, command.NewPassword);
+        if (!result.Succeeded)
+        {
+            if (result.Errors.Any(e => e.Code == nameof(IdentityErrorDescriber.InvalidToken)))
+            {
+                throw new ValidationException("token", InvalidResetLink);
+            }
+
+            ThrowForIdentityErrors(result.Errors);
+        }
+
+        // Proving ownership of the email is enough to lift a lockout. ResetPasswordAsync also rotated the
+        // security stamp, so sessions signed in with the old password are invalidated.
+        await userManager.ResetAccessFailedCountAsync(user);
+        await userManager.SetLockoutEndDateAsync(user, null);
+        LogPasswordReset(logger, user.Id);
+    }
+
+    private static bool TryDecodeToken(string encoded, out string token)
+    {
+        try
+        {
+            token = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(encoded));
+            return token.Length > 0;
+        }
+        catch (FormatException)
+        {
+            token = string.Empty;
+            return false;
+        }
+    }
+
     private static UserDto ToDto(ApplicationUser user) =>
         new(user.Id, user.Email!, user.DisplayName, user.CreatedAtUtc);
 
@@ -108,4 +184,10 @@ internal sealed partial class IdentityAuthService(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "User {UserId} locked out after repeated failed logins")]
     private static partial void LogUserLockedOut(ILogger logger, string userId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Password reset requested for user {UserId}")]
+    private static partial void LogPasswordResetRequested(ILogger logger, string userId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Password reset completed for user {UserId}")]
+    private static partial void LogPasswordReset(ILogger logger, string userId);
 }

@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using RedStarVibe.Application.Abstractions;
 using RedStarVibe.Infrastructure.Persistence;
 
 namespace RedStarVibe.IntegrationTests;
@@ -16,6 +18,8 @@ namespace RedStarVibe.IntegrationTests;
 public sealed class ApiFactory : WebApplicationFactory<Program>
 {
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
+
+    public CapturingEmailSender Emails { get; } = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -41,6 +45,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
             services.AddDbContext<AppDbContext>(options => options.UseSqlite(_connection));
 
+            services.RemoveAll<IEmailSender>();
+            services.AddSingleton<IEmailSender>(Emails);
+
             using var provider = services.BuildServiceProvider();
             using var scope = provider.CreateScope();
             scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.EnsureCreated();
@@ -53,6 +60,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         if (disposing)
         {
             _connection.Dispose();
+            Emails.Dispose();
         }
     }
 }

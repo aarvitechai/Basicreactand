@@ -12,6 +12,20 @@ export interface RegisterRequest {
   displayName: string
 }
 
+export interface ForgotPasswordRequest {
+  email: string
+}
+
+export interface ResetPasswordRequest {
+  email: string
+  token: string
+  newPassword: string
+}
+
+export interface MessageResponse {
+  message: string
+}
+
 export interface LoginRequest {
   email: string
   password: string

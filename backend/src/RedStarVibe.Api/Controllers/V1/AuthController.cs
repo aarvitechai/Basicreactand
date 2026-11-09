@@ -41,6 +41,35 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
         return Ok(UserResponse.FromDto(user));
     }
 
+    /// <summary>
+    /// Emails a password-reset link if the account exists. Always returns 202 with the same message,
+    /// so this endpoint can't be used to discover which emails are registered.
+    /// </summary>
+    [HttpPost("forgot-password")]
+    [AllowAnonymous]
+    [ProducesResponseType<MessageResponse>(StatusCodes.Status202Accepted)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<MessageResponse>> ForgotPassword(ForgotPasswordRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        await authService.RequestPasswordResetAsync(request.Email, cancellationToken);
+        return Accepted(new MessageResponse(
+            "If an account exists for that email, we've sent a link to reset your password."));
+    }
+
+    /// <summary>Sets a new password using the token from the reset email.</summary>
+    [HttpPost("reset-password")]
+    [AllowAnonymous]
+    [ProducesResponseType<MessageResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<MessageResponse>> ResetPassword(ResetPasswordRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        await authService.ResetPasswordAsync(
+            new ResetPasswordCommand(request.Email, request.Token, request.NewPassword), cancellationToken);
+        return Ok(new MessageResponse("Your password has been reset. You can now sign in."));
+    }
+
     /// <summary>Signs out (clears the auth cookie).</summary>
     [HttpPost("logout")]
     [Authorize]

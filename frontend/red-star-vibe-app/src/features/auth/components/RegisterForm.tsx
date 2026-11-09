@@ -4,7 +4,8 @@ import { ApiError, getFieldErrors } from '@/shared/api/httpClient'
 import { FormField } from '@/shared/components/FormField'
 import { useRegister } from '../hooks/useAuth'
 import type { User } from '../types'
-import { PASSWORD_RULES, validateRegister, type FormErrors, type RegisterFormValues } from '../validation'
+import { validateRegister, type FormErrors, type RegisterFormValues } from '../validation'
+import { PasswordRules } from './PasswordRules'
 
 interface RegisterFormProps {
   onSuccess: (user: User) => void
@@ -86,18 +87,7 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
         error={errors.password}
         maxLength={128}
         required
-        hint={
-          <ul className="password-rules">
-            {PASSWORD_RULES.map((rule) => {
-              const ok = rule.test(values.password)
-              return (
-                <li key={rule.label} className={ok ? 'ok' : undefined}>
-                  <span aria-hidden="true">{ok ? '✓' : '•'}</span> {rule.label}
-                </li>
-              )
-            })}
-          </ul>
-        }
+        hint={<PasswordRules password={values.password} />}
       />
       <FormField
         label="Confirm password"

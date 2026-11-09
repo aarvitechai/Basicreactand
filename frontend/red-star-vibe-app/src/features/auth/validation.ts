@@ -20,6 +20,18 @@ export interface RegisterFormValues {
 
 export type FormErrors<T> = Partial<Record<keyof T, string>>
 
+/** Returns an error message if the password breaks the policy, otherwise undefined. */
+export function passwordError(password: string): string | undefined {
+  const failed = PASSWORD_RULES.filter((r) => !r.test(password))
+  if (failed.length > 0) return `Password needs: ${failed.map((r) => r.label.toLowerCase()).join(', ')}.`
+  if (password.length > 128) return 'Password must be 128 characters or fewer.'
+  return undefined
+}
+
+export function emailError(email: string): string | undefined {
+  return EMAIL_PATTERN.test(email.trim()) ? undefined : 'Enter a valid email address.'
+}
+
 export function validateRegister(values: RegisterFormValues): FormErrors<RegisterFormValues> {
   const errors: FormErrors<RegisterFormValues> = {}
   const name = values.displayName.trim()
@@ -27,15 +39,28 @@ export function validateRegister(values: RegisterFormValues): FormErrors<Registe
   if (name.length < 2) errors.displayName = 'Name must be at least 2 characters.'
   else if (name.length > 100) errors.displayName = 'Name must be 100 characters or fewer.'
 
-  if (!EMAIL_PATTERN.test(values.email.trim())) errors.email = 'Enter a valid email address.'
-
-  const failed = PASSWORD_RULES.filter((r) => !r.test(values.password))
-  if (failed.length > 0) errors.password = `Password needs: ${failed.map((r) => r.label.toLowerCase()).join(', ')}.`
-  else if (values.password.length > 128) errors.password = 'Password must be 128 characters or fewer.'
-
+  errors.email = emailError(values.email)
+  errors.password = passwordError(values.password)
   if (values.confirmPassword !== values.password) errors.confirmPassword = 'Passwords do not match.'
 
-  return errors
+  return withoutEmpty(errors)
+}
+
+export interface ResetPasswordFormValues {
+  newPassword: string
+  confirmPassword: string
+}
+
+export function validateResetPassword(values: ResetPasswordFormValues): FormErrors<ResetPasswordFormValues> {
+  return withoutEmpty({
+    newPassword: passwordError(values.newPassword),
+    confirmPassword: values.confirmPassword !== values.newPassword ? 'Passwords do not match.' : undefined,
+  })
+}
+
+/** Drops undefined entries so `Object.keys(errors).length` reflects only real errors. */
+function withoutEmpty<T>(errors: FormErrors<T>): FormErrors<T> {
+  return Object.fromEntries(Object.entries(errors).filter(([, v]) => v !== undefined)) as FormErrors<T>
 }
 
 export interface LoginFormValues {

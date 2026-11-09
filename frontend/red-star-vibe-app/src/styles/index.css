@@ -679,3 +679,46 @@ button.primary {
     justify-content: center;
   }
 }
+
+/* ---- Auth extras ---- */
+.form-intro {
+  margin: 0;
+}
+
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.small-link {
+  font-size: 0.9rem;
+}
+
+.notice {
+  border-radius: 6px;
+  padding: 0.85rem 1rem;
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  border: 1px solid var(--border);
+}
+
+.notice p {
+  margin: 0.35rem 0 0;
+}
+
+.notice-success {
+  margin-bottom: 1rem;
+  background: color-mix(in srgb, #2e7d32 12%, var(--surface));
+  border-color: color-mix(in srgb, #2e7d32 35%, var(--border));
+}
+
+.notice-success p {
+  margin: 0;
+}
+
+.btn-block {
+  justify-content: center;
+  width: 100%;
+}

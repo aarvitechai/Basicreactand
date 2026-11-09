@@ -8,6 +8,7 @@ using Microsoft.Extensions.Hosting;
 using RedStarVibe.Application.Abstractions;
 using RedStarVibe.Application.Auth;
 using RedStarVibe.Application.Weather;
+using RedStarVibe.Infrastructure.Email;
 using RedStarVibe.Infrastructure.Identity;
 using RedStarVibe.Infrastructure.Persistence;
 using RedStarVibe.Infrastructure.Time;
@@ -33,8 +34,42 @@ public static class DependencyInjection
 
         AddPersistence(services, configuration);
         AddIdentity(services, environment);
+        AddEmail(services, configuration, environment);
 
         return services;
+    }
+
+    private static void AddEmail(IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
+    {
+        services.AddOptions<EmailOptions>()
+            .Bind(configuration.GetSection(EmailOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services.AddOptions<AppUrlOptions>()
+            .Bind(configuration.GetSection(AppUrlOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services.AddSingleton<EmailOutbox>();
+        services.AddSingleton<IEmailOutbox>(sp => sp.GetRequiredService<EmailOutbox>());
+        services.AddHostedService<EmailDispatcher>();
+
+        var smtpHost = configuration[$"{EmailOptions.SectionName}:Smtp:Host"];
+        if (!string.IsNullOrWhiteSpace(smtpHost))
+        {
+            services.AddSingleton<IEmailSender, SmtpEmailSender>();
+        }
+        else if (environment.IsDevelopment())
+        {
+            services.AddSingleton<IEmailSender, DevelopmentLogEmailSender>();
+        }
+        else
+        {
+            // Fail fast: without this, password-reset emails would silently never arrive in production.
+            throw new InvalidOperationException(
+                "Email:Smtp:Host must be configured outside Development (e.g. Email__Smtp__Host environment variable).");
+        }
     }
 
     private static void AddPersistence(IServiceCollection services, IConfiguration configuration)
@@ -79,6 +114,13 @@ public static class DependencyInjection
             .AddEntityFrameworkStores<AppDbContext>()
             .AddSignInManager()
             .AddDefaultTokenProviders();
+
+        // Password-reset links expire after 1 hour (Identity's default is 1 day).
+        services.Configure<DataProtectionTokenProviderOptions>(o => o.TokenLifespan = TimeSpan.FromHours(1));
+
+        // Re-check each session's security stamp every 5 minutes (default 30) so a password reset
+        // signs out other devices quickly.
+        services.Configure<SecurityStampValidatorOptions>(o => o.ValidationInterval = TimeSpan.FromMinutes(5));
 
         services
             .AddAuthentication(IdentityConstants.ApplicationScheme)
