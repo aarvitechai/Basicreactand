@@ -15,12 +15,17 @@ export function useCurrentUser() {
   })
 }
 
+/** Registration does NOT sign the user in: they must confirm their email first. */
 export function useRegister() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: authApi.register,
-    onSuccess: (user) => queryClient.setQueryData<User | null>(authKeys.me, user),
-  })
+  return useMutation({ mutationFn: authApi.register })
+}
+
+export function useConfirmEmail() {
+  return useMutation({ mutationFn: authApi.confirmEmail })
+}
+
+export function useResendConfirmation() {
+  return useMutation({ mutationFn: authApi.resendConfirmation })
 }
 
 export function useLogin() {
@@ -37,6 +42,18 @@ export function useForgotPassword() {
 
 export function useResetPassword() {
   return useMutation({ mutationFn: authApi.resetPassword })
+}
+
+export function useSendPhoneCode() {
+  return useMutation({ mutationFn: authApi.sendPhoneCode })
+}
+
+export function useVerifyPhone() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: authApi.verifyPhone,
+    onSuccess: (user) => queryClient.setQueryData<User | null>(authKeys.me, user),
+  })
 }
 
 export function useLogout() {

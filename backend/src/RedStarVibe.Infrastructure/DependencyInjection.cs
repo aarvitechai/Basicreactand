@@ -11,6 +11,7 @@ using RedStarVibe.Application.Weather;
 using RedStarVibe.Infrastructure.Email;
 using RedStarVibe.Infrastructure.Identity;
 using RedStarVibe.Infrastructure.Persistence;
+using RedStarVibe.Infrastructure.Sms;
 using RedStarVibe.Infrastructure.Time;
 using RedStarVibe.Infrastructure.Weather;
 
@@ -35,8 +36,41 @@ public static class DependencyInjection
         AddPersistence(services, configuration);
         AddIdentity(services, environment);
         AddEmail(services, configuration, environment);
+        AddSms(services, configuration, environment);
 
         return services;
+    }
+
+    private static void AddSms(IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
+    {
+        var section = configuration.GetSection(SmsOptions.SectionName);
+        services.Configure<SmsOptions>(section);
+        var twilio = section.GetSection("Twilio").Get<TwilioOptions>() ?? new TwilioOptions();
+
+        if (twilio.IsConfigured)
+        {
+            if (string.IsNullOrWhiteSpace(twilio.AuthToken)
+                || (string.IsNullOrWhiteSpace(twilio.FromNumber) && string.IsNullOrWhiteSpace(twilio.MessagingServiceSid)))
+            {
+                throw new InvalidOperationException(
+                    "Sms:Twilio requires AuthToken and either FromNumber or MessagingServiceSid.");
+            }
+
+            services.AddHttpClient<ISmsSender, TwilioSmsSender>(client =>
+            {
+                client.BaseAddress = new Uri("https://api.twilio.com/");
+                client.Timeout = TimeSpan.FromSeconds(15);
+            });
+        }
+        else if (environment.IsDevelopment())
+        {
+            services.AddSingleton<ISmsSender, DevelopmentLogSmsSender>();
+        }
+        else
+        {
+            throw new InvalidOperationException(
+                "Sms:Twilio:AccountSid must be configured outside Development (e.g. Sms__Twilio__AccountSid environment variable).");
+        }
     }
 
     private static void AddEmail(IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
@@ -108,12 +142,15 @@ public static class DependencyInjection
                 options.Lockout.MaxFailedAccessAttempts = 5;
                 options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
 
-                // Flip to true once an email sender is wired up for confirmation links.
-                options.SignIn.RequireConfirmedAccount = false;
+                // Users must click the link in the confirmation email before they can sign in.
+                options.SignIn.RequireConfirmedEmail = true;
+                options.Tokens.EmailConfirmationTokenProvider = EmailConfirmationTokenProvider<ApplicationUser>.ProviderName;
             })
             .AddEntityFrameworkStores<AppDbContext>()
             .AddSignInManager()
-            .AddDefaultTokenProviders();
+            .AddDefaultTokenProviders()
+            .AddTokenProvider<EmailConfirmationTokenProvider<ApplicationUser>>(
+                EmailConfirmationTokenProvider<ApplicationUser>.ProviderName);
 
         // Password-reset links expire after 1 hour (Identity's default is 1 day).
         services.Configure<DataProtectionTokenProviderOptions>(o => o.TokenLifespan = TimeSpan.FromHours(1));

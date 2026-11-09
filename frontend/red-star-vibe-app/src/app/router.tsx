@@ -1,6 +1,8 @@
 import { createBrowserRouter } from 'react-router'
 import { GuestOnly, RequireAuth } from '@/features/auth'
 import { AccountPage } from '@/pages/AccountPage'
+import { CheckEmailPage } from '@/pages/CheckEmailPage'
+import { ConfirmEmailPage } from '@/pages/ConfirmEmailPage'
 import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage'
 import { HomePage } from '@/pages/home/HomePage'
 import { LoginPage } from '@/pages/LoginPage'
@@ -22,10 +24,12 @@ export const router = createBrowserRouter([
           { path: 'login', element: <LoginPage /> },
           { path: 'register', element: <RegisterPage /> },
           { path: 'forgot-password', element: <ForgotPasswordPage /> },
+          { path: 'check-email', element: <CheckEmailPage /> },
         ],
       },
       // Not guest-only: a reset link must work even if the browser still has an old session.
       { path: 'reset-password', element: <ResetPasswordPage /> },
+      { path: 'confirm-email', element: <ConfirmEmailPage /> },
       {
         element: <RequireAuth />,
         children: [{ path: 'account', element: <AccountPage /> }],

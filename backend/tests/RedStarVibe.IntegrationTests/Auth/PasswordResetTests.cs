@@ -29,7 +29,7 @@ public sealed partial class PasswordResetTests(ApiFactory factory) : IClassFixtu
             .PostAsJsonAsync(Url("/api/v1/auth/forgot-password"), new ForgotPasswordRequest(email));
         Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
 
-        var message = await factory.Emails.WaitForEmailToAsync(email);
+        var message = await factory.Emails.WaitForEmailToAsync(email, "Reset");
         var link = new Uri(ResetLinkPattern().Match(message.TextBody).Value);
         var query = HttpUtility.ParseQueryString(link.Query);
         return (link, query["email"]!, query["token"]!);
@@ -62,7 +62,7 @@ public sealed partial class PasswordResetTests(ApiFactory factory) : IClassFixtu
 
         Assert.Equal(knownResponse.StatusCode, unknownResponse.StatusCode);
         Assert.Equal(await knownResponse.Content.ReadAsStringAsync(), await unknownResponse.Content.ReadAsStringAsync());
-        await factory.Emails.WaitForEmailToAsync(known);
+        await factory.Emails.WaitForEmailToAsync(known, "Reset");
         Assert.DoesNotContain(factory.Emails.Sent, m => m.To == unknown);
     }
 

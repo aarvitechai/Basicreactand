@@ -3,8 +3,9 @@ import { Link } from 'react-router'
 import { ApiError } from '@/shared/api/httpClient'
 import { FormField } from '@/shared/components/FormField'
 import { useLogin } from '../hooks/useAuth'
-import type { User } from '../types'
+import { EMAIL_NOT_CONFIRMED, type User } from '../types'
 import { validateLogin, type FormErrors, type LoginFormValues } from '../validation'
+import { ResendConfirmation } from './ResendConfirmation'
 
 interface LoginFormProps {
   onSuccess: (user: User) => void
@@ -14,6 +15,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
   const [values, setValues] = useState<LoginFormValues>({ email: '', password: '', rememberMe: false })
   const [errors, setErrors] = useState<FormErrors<LoginFormValues>>({})
   const [formError, setFormError] = useState<string | null>(null)
+  const [unconfirmedEmail, setUnconfirmedEmail] = useState<string | null>(null)
   const login = useLogin()
 
   const handleSubmit = (e: FormEvent) => {
@@ -29,13 +31,30 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
       {
         onSuccess,
         onError: (error) => {
-          if (error instanceof ApiError && error.status === 429) {
+          if (error instanceof ApiError && error.problem?.code === EMAIL_NOT_CONFIRMED) {
+            setUnconfirmedEmail(values.email.trim())
+            setFormError(error.message)
+          } else if (error instanceof ApiError && error.status === 429) {
             setFormError('Too many attempts. Please wait a minute and try again.')
           } else {
             setFormError(error instanceof ApiError ? error.message : 'Sign-in failed. Please try again.')
           }
         },
       },
+    )
+  }
+
+  if (unconfirmedEmail) {
+    return (
+      <div className="form">
+        <div className="error" role="alert">
+          <p>{formError}</p>
+        </div>
+        <ResendConfirmation email={unconfirmedEmail} />
+        <button type="button" className="link-button" onClick={() => setUnconfirmedEmail(null)}>
+          Back to sign in
+        </button>
+      </div>
     )
   }
 

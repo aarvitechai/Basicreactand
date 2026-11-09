@@ -4,14 +4,20 @@ import { ApiError, getFieldErrors } from '@/shared/api/httpClient'
 import { FormField } from '@/shared/components/FormField'
 import { useRegister } from '../hooks/useAuth'
 import type { User } from '../types'
-import { validateRegister, type FormErrors, type RegisterFormValues } from '../validation'
+import { normalizePhone, PHONE_HINT, validateRegister, type FormErrors, type RegisterFormValues } from '../validation'
 import { PasswordRules } from './PasswordRules'
 
 interface RegisterFormProps {
   onSuccess: (user: User) => void
 }
 
-const initialValues: RegisterFormValues = { displayName: '', email: '', password: '', confirmPassword: '' }
+const initialValues: RegisterFormValues = {
+  displayName: '',
+  email: '',
+  phoneNumber: '',
+  password: '',
+  confirmPassword: '',
+}
 
 export function RegisterForm({ onSuccess }: RegisterFormProps) {
   const [values, setValues] = useState(initialValues)
@@ -33,14 +39,18 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
     if (Object.keys(clientErrors).length > 0) return
 
     register.mutate(
-      { displayName: values.displayName.trim(), email: values.email.trim(), password: values.password },
+      {
+        displayName: values.displayName.trim(),
+        email: values.email.trim(),
+        password: values.password,
+        phoneNumber: normalizePhone(values.phoneNumber) ?? undefined,
+      },
       {
         onSuccess,
         onError: (error) => {
-          const fieldErrors = getFieldErrors(error)
-          setErrors({ displayName: fieldErrors.displayName, email: fieldErrors.email, password: fieldErrors.password })
-          const hasFieldErrors = Boolean(fieldErrors.displayName || fieldErrors.email || fieldErrors.password)
-          if (!hasFieldErrors) {
+          const f = getFieldErrors(error)
+          setErrors({ displayName: f.displayName, email: f.email, phoneNumber: f.phoneNumber, password: f.password })
+          if (!(f.displayName || f.email || f.phoneNumber || f.password)) {
             setFormError(error instanceof ApiError ? error.message : 'Registration failed. Please try again.')
           }
         },
@@ -76,6 +86,19 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
         error={errors.email}
         maxLength={256}
         required
+      />
+      <FormField
+        label="Mobile number (optional)"
+        name="phoneNumber"
+        type="tel"
+        inputMode="tel"
+        autoComplete="tel"
+        placeholder="+91 98765 43210"
+        value={values.phoneNumber}
+        onChange={update('phoneNumber')}
+        error={errors.phoneNumber}
+        maxLength={32}
+        hint={`${PHONE_HINT} You can verify it by SMS after signing in.`}
       />
       <FormField
         label="Password"

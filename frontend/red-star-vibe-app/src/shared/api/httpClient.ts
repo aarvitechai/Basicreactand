@@ -7,6 +7,8 @@ export interface ProblemDetails {
   status?: number
   detail?: string
   errors?: Record<string, string[]>
+  /** Machine-readable reason, e.g. "email_not_confirmed". */
+  code?: string
 }
 
 export class ApiError extends Error {

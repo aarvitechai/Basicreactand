@@ -9,6 +9,8 @@ internal static class ServiceCollectionExtensions
     public const string CorsPolicy = "Frontend";
     public const string DefaultRateLimitPolicy = "fixed";
     public const string AuthRateLimitPolicy = "auth";
+    public const string SmsRateLimitPolicy = "sms";
+    public const string SmsVerifyRateLimitPolicy = "sms-verify";
 
     public static IServiceCollection AddApiServices(this IServiceCollection services, IConfiguration configuration)
     {
@@ -32,6 +34,10 @@ internal static class ServiceCollectionExtensions
             AddFixedWindowPolicy(options, DefaultRateLimitPolicy, configuration.GetSection("RateLimiting:Default"), 100, 60);
             // Tighter limit on auth endpoints to slow down credential stuffing / signup abuse.
             AddFixedWindowPolicy(options, AuthRateLimitPolicy, configuration.GetSection("RateLimiting:Auth"), 10, 60);
+            // SMS costs money and is a common toll-fraud target: few sends per user per window.
+            AddFixedWindowPolicy(options, SmsRateLimitPolicy, configuration.GetSection("RateLimiting:Sms"), 3, 900, perUser: true);
+            // Limits brute-forcing the 6-digit code.
+            AddFixedWindowPolicy(options, SmsVerifyRateLimitPolicy, configuration.GetSection("RateLimiting:SmsVerify"), 10, 900, perUser: true);
         });
 
         // Honour X-Forwarded-* headers when running behind a reverse proxy / load balancer.
@@ -50,13 +56,19 @@ internal static class ServiceCollectionExtensions
         string name,
         IConfigurationSection section,
         int defaultPermitLimit,
-        int defaultWindowSeconds)
+        int defaultWindowSeconds,
+        bool perUser = false)
     {
         var permitLimit = section.GetValue("PermitLimit", defaultPermitLimit);
         var window = TimeSpan.FromSeconds(section.GetValue("WindowSeconds", defaultWindowSeconds));
 
-        options.AddPolicy(name, context => RateLimitPartition.GetFixedWindowLimiter(
-            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-            _ => new FixedWindowRateLimiterOptions { PermitLimit = permitLimit, Window = window }));
+        options.AddPolicy(name, context =>
+        {
+            var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            var userId = context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var key = perUser && userId is not null ? $"user:{userId}" : $"ip:{ip}";
+            return RateLimitPartition.GetFixedWindowLimiter(
+                key, _ => new FixedWindowRateLimiterOptions { PermitLimit = permitLimit, Window = window });
+        });
     }
 }

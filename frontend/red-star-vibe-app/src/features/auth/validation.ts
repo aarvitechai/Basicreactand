@@ -14,8 +14,23 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 export interface RegisterFormValues {
   displayName: string
   email: string
+  phoneNumber: string
   password: string
   confirmPassword: string
+}
+
+/** Mirrors backend PhoneNumbers.Normalize: strip separators, '00' prefix → '+', require E.164. */
+export function normalizePhone(input: string): string | null {
+  let compact = input.trim().replace(/[\s\-.()]/g, '')
+  if (compact.startsWith('00')) compact = `+${compact.slice(2)}`
+  return /^\+[1-9]\d{7,14}$/.test(compact) ? compact : null
+}
+
+export const PHONE_HINT = 'Include your country code, e.g. +91 98765 43210.'
+
+export function phoneError(phone: string, { required = false } = {}): string | undefined {
+  if (!phone.trim()) return required ? 'Enter your phone number.' : undefined
+  return normalizePhone(phone) ? undefined : `Enter a valid international number. ${PHONE_HINT}`
 }
 
 export type FormErrors<T> = Partial<Record<keyof T, string>>
@@ -40,6 +55,7 @@ export function validateRegister(values: RegisterFormValues): FormErrors<Registe
   else if (name.length > 100) errors.displayName = 'Name must be 100 characters or fewer.'
 
   errors.email = emailError(values.email)
+  errors.phoneNumber = phoneError(values.phoneNumber)
   errors.password = passwordError(values.password)
   if (values.confirmPassword !== values.password) errors.confirmPassword = 'Passwords do not match.'
 

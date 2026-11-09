@@ -20,22 +20,28 @@ public sealed class CapturingEmailSender : IEmailSender, IDisposable
         return Task.CompletedTask;
     }
 
-    /// <summary>Waits (emails are delivered by a background worker) for an email to the given address.</summary>
-    public async Task<EmailMessage> WaitForEmailToAsync(string to, TimeSpan? timeout = null)
+    /// <summary>
+    /// Waits for an email to <paramref name="to"/> whose subject contains <paramref name="subjectContains"/>
+    /// (emails are delivered by a background worker). Returns the most recent match.
+    /// </summary>
+    public async Task<EmailMessage> WaitForEmailToAsync(string to, string subjectContains = "", int count = 1, TimeSpan? timeout = null)
     {
         var deadline = DateTime.UtcNow + (timeout ?? TimeSpan.FromSeconds(5));
         while (true)
         {
-            var match = _sent.FirstOrDefault(m => string.Equals(m.To, to, StringComparison.OrdinalIgnoreCase));
-            if (match is not null)
+            var matches = _sent
+                .Where(m => string.Equals(m.To, to, StringComparison.OrdinalIgnoreCase)
+                         && m.Subject.Contains(subjectContains, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            if (matches.Count >= count)
             {
-                return match;
+                return matches[^1];
             }
 
             var remaining = deadline - DateTime.UtcNow;
             if (remaining <= TimeSpan.Zero || !await _signal.WaitAsync(remaining))
             {
-                throw new TimeoutException($"No email to {to} was sent.");
+                throw new TimeoutException($"Expected {count} email(s) to {to} with subject containing '{subjectContains}'.");
             }
         }
     }

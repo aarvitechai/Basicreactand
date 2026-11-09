@@ -70,8 +70,12 @@ served from one origin (Vite proxy in dev, nginx in production), which is what m
 
 | Endpoint | Auth | Result |
 |---|---|---|
-| `POST /api/v1/auth/register` `{ email, password, displayName }` | anonymous | `201` user + cookie · `400` validation · `409` email taken |
-| `POST /api/v1/auth/login` `{ email, password, rememberMe }` | anonymous | `200` user + cookie · `401` invalid credentials |
+| `POST /api/v1/auth/register` `{ email, password, displayName, phoneNumber? }` | anonymous | `201` user (not signed in; confirmation email sent) · `400` validation · `409` email taken |
+| `POST /api/v1/auth/confirm-email` `{ userId, token }` | anonymous | `200` · `400` invalid/expired link (`token`) |
+| `POST /api/v1/auth/resend-confirmation` `{ email }` | anonymous | always `202` with the same message |
+| `POST /api/v1/auth/login` `{ email, password, rememberMe }` | anonymous | `200` user + cookie · `401` invalid credentials · `403` `code: email_not_confirmed` |
+| `POST /api/v1/account/phone/send-code` `{ phoneNumber }` | signed in | `202` SMS sent · `400` invalid number · `429` · `503` SMS provider down |
+| `POST /api/v1/account/phone/verify` `{ phoneNumber, code }` | signed in | `200` user with `phoneNumberConfirmed: true` · `400` wrong/expired code |
 | `POST /api/v1/auth/logout` | signed in | `204`, cookie cleared |
 | `GET /api/v1/auth/me` | signed in | `200` current user · `401` |
 | `POST /api/v1/auth/forgot-password` `{ email }` | anonymous | always `202` with the same message (emails a link if the account exists) |
@@ -107,8 +111,28 @@ Built-in protections:
 - The email queue is in memory: an email that hasn't been sent yet is lost if the process stops. Use a durable
   outbox or message queue if you need guaranteed delivery.
 
-Not yet included: email confirmation on sign-up (the email pipeline is ready; add a confirm endpoint and set
-`SignIn.RequireConfirmedAccount = true`), and roles/authorization policies.
+### Email confirmation
+
+- Registering creates the account and emails a link to `/confirm-email?userId=…&token=…` (valid **24 hours**,
+  separate token provider from password reset). The user is **not** signed in.
+- Sign-in is refused until the email is confirmed. The `403 email_not_confirmed` response is only given when the
+  password is correct (wrong passwords get the generic `401` and count toward lockout), so it can't be used to
+  probe which emails have unconfirmed accounts. The sign-in page then offers to resend the link.
+- The confirm page POSTs from JavaScript instead of confirming on GET, so email link scanners can't confirm
+  accounts on the user's behalf. Confirming twice is harmless. Completing a password reset also confirms the email.
+
+### Phone verification (SMS)
+
+- A mobile number is optional at registration (stored in E.164, e.g. `+919876543210`, unverified). After signing in,
+  the account page texts a **6-digit code** and verifies it; changing the number works the same way.
+- Codes are time-based and bound to the specific number (a code for one number can't verify another).
+- Rate limits **per user**: 3 codes per 15 minutes (`RateLimiting:Sms`) to control SMS cost and toll fraud, and
+  10 verify attempts per 15 minutes (`RateLimiting:SmsVerify`) to stop brute-forcing codes.
+- **Development:** codes are written to the API console (`===== DEV SMS (not sent) =====`).
+- **Production:** Twilio is required (the app refuses to start without it): set `Sms:Twilio:AccountSid`,
+  `Sms:Twilio:AuthToken` (secret) and either `FromNumber` or `MessagingServiceSid`.
+
+Not yet included: SMS two-factor sign-in (the verified phone and SMS sender are in place), and roles/authorization policies.
 
 ## Database migrations
 

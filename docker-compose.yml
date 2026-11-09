@@ -13,6 +13,10 @@ services:
       Email__Smtp__Username: ${SMTP_USERNAME:-}
       Email__Smtp__Password: ${SMTP_PASSWORD:-}
       Email__Smtp__UseStartTls: ${SMTP_USE_STARTTLS:-true}
+      Sms__Twilio__AccountSid: ${TWILIO_ACCOUNT_SID:?Set TWILIO_ACCOUNT_SID in .env}
+      Sms__Twilio__AuthToken: ${TWILIO_AUTH_TOKEN:?Set TWILIO_AUTH_TOKEN in .env}
+      Sms__Twilio__FromNumber: ${TWILIO_FROM_NUMBER:-}
+      Sms__Twilio__MessagingServiceSid: ${TWILIO_MESSAGING_SERVICE_SID:-}
     expose:
       - "8080"
     healthcheck:

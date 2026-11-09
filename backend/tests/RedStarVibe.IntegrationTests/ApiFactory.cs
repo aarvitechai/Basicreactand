@@ -21,6 +21,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
     public CapturingEmailSender Emails { get; } = new();
 
+    public CapturingSmsSender Sms { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         _connection.Open();
@@ -30,6 +32,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         {
             ["Database:ApplyMigrationsOnStartup"] = "false",
             ["RateLimiting:Auth:PermitLimit"] = "1000",
+            ["RateLimiting:Sms:PermitLimit"] = "1000",
+            ["RateLimiting:SmsVerify:PermitLimit"] = "1000",
         }));
 
         builder.ConfigureServices(services =>
@@ -47,6 +51,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
             services.RemoveAll<IEmailSender>();
             services.AddSingleton<IEmailSender>(Emails);
+            services.RemoveAll<ISmsSender>();
+            services.AddSingleton<ISmsSender>(Sms);
 
             using var provider = services.BuildServiceProvider();
             using var scope = provider.CreateScope();

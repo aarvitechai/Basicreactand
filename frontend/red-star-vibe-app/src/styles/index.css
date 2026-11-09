@@ -722,3 +722,55 @@ button.primary {
   justify-content: center;
   width: 100%;
 }
+
+/* ---- Account / verification ---- */
+.account-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.account-grid h2 {
+  margin-bottom: 0.5rem;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.badge-success {
+  color: #1b5e20;
+  background: color-mix(in srgb, #2e7d32 18%, var(--surface));
+}
+
+.badge-warning {
+  color: #8a5a00;
+  background: color-mix(in srgb, #f9a825 22%, var(--surface));
+}
+
+@media (prefers-color-scheme: dark) {
+  .badge-success {
+    color: #a5d6a7;
+  }
+  .badge-warning {
+    color: #ffe082;
+  }
+}
+
+.phone-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.phone-status .form-row {
+  width: 100%;
+  justify-content: flex-start;
+}

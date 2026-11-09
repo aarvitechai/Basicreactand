@@ -14,7 +14,12 @@ namespace RedStarVibe.Api.Controllers.V1;
 [EnableRateLimiting(ServiceCollectionExtensions.AuthRateLimitPolicy)]
 public sealed class AuthController(IAuthService authService) : ControllerBase
 {
-    /// <summary>Creates an account and signs the user in (sets the auth cookie).</summary>
+    private const string NeutralConfirmationMessage =
+        "If that email belongs to an account that still needs confirming, we've sent a new confirmation link.";
+
+    /// <summary>
+    /// Creates an account and emails a confirmation link. The user is not signed in until they confirm.
+    /// </summary>
     [HttpPost("register")]
     [AllowAnonymous]
     [ProducesResponseType<UserResponse>(StatusCodes.Status201Created)]
@@ -24,15 +29,41 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
     {
         ArgumentNullException.ThrowIfNull(request);
         var user = await authService.RegisterAsync(
-            new RegisterUserCommand(request.Email, request.Password, request.DisplayName), cancellationToken);
+            new RegisterUserCommand(request.Email, request.Password, request.DisplayName, request.PhoneNumber),
+            cancellationToken);
         return CreatedAtAction(nameof(Me), UserResponse.FromDto(user));
     }
 
+    /// <summary>Confirms the email address using the link from the confirmation email.</summary>
+    [HttpPost("confirm-email")]
+    [AllowAnonymous]
+    [ProducesResponseType<MessageResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<MessageResponse>> ConfirmEmail(ConfirmEmailRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        await authService.ConfirmEmailAsync(new ConfirmEmailCommand(request.UserId, request.Token), cancellationToken);
+        return Ok(new MessageResponse("Your email is confirmed. You can now sign in."));
+    }
+
+    /// <summary>Re-sends the confirmation link. Always returns 202 with the same message.</summary>
+    [HttpPost("resend-confirmation")]
+    [AllowAnonymous]
+    [ProducesResponseType<MessageResponse>(StatusCodes.Status202Accepted)]
+    public async Task<ActionResult<MessageResponse>> ResendConfirmation(ResendConfirmationRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        await authService.ResendEmailConfirmationAsync(request.Email, cancellationToken);
+        return Accepted(new MessageResponse(NeutralConfirmationMessage));
+    }
+
     /// <summary>Signs in with email and password (sets the auth cookie).</summary>
+    /// <response code="403">Correct password but email not confirmed (problem "code": "email_not_confirmed").</response>
     [HttpPost("login")]
     [AllowAnonymous]
     [ProducesResponseType<UserResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<UserResponse>> Login(LoginRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);

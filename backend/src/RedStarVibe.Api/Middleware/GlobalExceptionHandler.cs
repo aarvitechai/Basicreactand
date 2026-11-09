@@ -29,6 +29,17 @@ internal sealed partial class GlobalExceptionHandler(
                 Status = StatusCodes.Status401Unauthorized,
                 Title = unauthorized.Message,
             },
+            ForbiddenException forbidden => new ProblemDetails
+            {
+                Status = StatusCodes.Status403Forbidden,
+                Title = forbidden.Message,
+                Extensions = { ["code"] = forbidden.Code },
+            },
+            ServiceUnavailableException unavailable => new ProblemDetails
+            {
+                Status = StatusCodes.Status503ServiceUnavailable,
+                Title = unavailable.Message,
+            },
             OperationCanceledException => new ProblemDetails
             {
                 Status = StatusCodes.Status499ClientClosedRequest,
