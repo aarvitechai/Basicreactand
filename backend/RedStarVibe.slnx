@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/RedStarVibe.Api/RedStarVibe.Api.csproj" />
+    <Project Path="src/RedStarVibe.Application/RedStarVibe.Application.csproj" />
+    <Project Path="src/RedStarVibe.Domain/RedStarVibe.Domain.csproj" />
+    <Project Path="src/RedStarVibe.Infrastructure/RedStarVibe.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/RedStarVibe.IntegrationTests/RedStarVibe.IntegrationTests.csproj" />
+    <Project Path="tests/RedStarVibe.UnitTests/RedStarVibe.UnitTests.csproj" />
+  </Folder>
+</Solution>

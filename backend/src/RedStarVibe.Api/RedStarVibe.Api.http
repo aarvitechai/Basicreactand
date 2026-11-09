@@ -1,0 +1,15 @@
+@HostAddress = http://localhost:5057
+
+GET {{HostAddress}}/api/v1/weather-forecasts?days=5
+Accept: application/json
+
+###
+
+GET {{HostAddress}}/api/v1/weather-forecasts?days=99
+Accept: application/json
+
+###
+
+GET {{HostAddress}}/health
+
+###

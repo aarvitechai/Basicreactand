@@ -1,6 +1,0 @@
-@RedStarVibeApp_HostAddress = http://localhost:5057
-
-GET {{RedStarVibeApp_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###

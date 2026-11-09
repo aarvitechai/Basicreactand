@@ -1,0 +1,3 @@
+[*.cs]
+# Test_Method_Naming is conventional in test projects.
+dotnet_diagnostic.CA1707.severity = none

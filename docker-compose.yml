@@ -1,0 +1,25 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend/red-star-vibe-app
+    environment:
+      API_UPSTREAM: http://backend:8080
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
